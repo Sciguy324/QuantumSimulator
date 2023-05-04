@@ -1,6 +1,6 @@
 # Import modules
 import numpy as np
-import scipy.integrate as integrate
+#import scipy.integrate as integrate
 from time import time_ns
 from math import factorial
 # Import pyglet stuff
@@ -48,6 +48,7 @@ dt = 5e-3
 # Note:
 # aΔt/Δx² < 0.5
 
+
 # Declare some helper functions
 def laplacian1D(psi, deltas):
     """Computes the Laplacian of a function"""
@@ -72,6 +73,7 @@ def integrateArray(array, delta=1):
     """Integrates an array over a single axis using the trapezoidal method"""
     return np.sum((array[1:] + array[:-1])/2 * delta, axis=0)
 
+
 def nquad(psi, deltas):
     """Integrates an array over all dimensions using the trapezoidal method repeatedly"""
     dim = len(psi.shape)
@@ -79,6 +81,7 @@ def nquad(psi, deltas):
     for delta in deltas:
         result = integrateArray(result, delta=delta)
     return result
+
 
 def normalize(psi, deltas):
     """Normalzes the given wavefunction"""

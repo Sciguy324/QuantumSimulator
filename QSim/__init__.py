@@ -15,4 +15,6 @@ Written and tested with:
 """
 __author__ = 'Will Ebmeyer'
 __version__ = 'v0.0'
-__all__ = ['Simulator']
+__all__ = ['Simulator',
+           'Wavefunction',
+           'Render']

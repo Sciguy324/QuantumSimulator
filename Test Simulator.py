@@ -15,6 +15,7 @@ dt = 5e-3
 # Note:
 # aΔt/Δx² < 0.5
 
+
 # Declare some helper functions
 def laplacian1D(psi, deltas):
     """Computes the Laplacian of a function"""
@@ -39,6 +40,7 @@ def integrateArray(array, delta=1):
     """Integrates an array over a single axis using the trapezoidal method"""
     return np.sum((array[1:] + array[:-1])/2 * delta, axis=0)
 
+
 def nquad(psi, deltas):
     """Integrates an array over all dimensions using the trapezoidal method repeatedly"""
     dim = len(psi.shape)
@@ -47,12 +49,13 @@ def nquad(psi, deltas):
         result = integrateArray(result, delta=delta)
     return result
 
+
 def normalize(psi, deltas):
     """Normalzes the given wavefunction"""
     a = np.sqrt(nquad(np.conjugate(psi)*psi, deltas))
     return psi / a
-    
-                
+
+
 # Declare simulation evolution rule
 def step(psi, hamiltonian, deltas, order=1):
     # Output buffer
