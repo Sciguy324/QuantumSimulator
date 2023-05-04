@@ -128,7 +128,6 @@ def boundaryConditions(psi):
 L = 1
 x = np.linspace(0, L, 50)
 dx = x[1] - x[0]
-V = 20*(x-L/2)**2
 
 print(dt/dx**2)
 
@@ -137,7 +136,6 @@ V = 20*(x-L/2)**2
 
 # Declare initial wavefunction
 psi = np.sqrt(2/L)*np.sin(np.pi*x/L) + np.sqrt(2/L)*np.sin(2*np.pi*x/L)
-
 
 
 # Initialize window
@@ -154,6 +152,7 @@ program.use()
 #program.uniforms['color'].set(Vec3(255, 0, 0))
 program.uniforms['translate'].set(Vec2(0.0, 0.0))
 
+
 def createCurve(x, array, color):
     lines = np.zeros((len(x)*2-2, 2), dtype=float)
     pts = np.array([x, array]).T
@@ -163,6 +162,7 @@ def createCurve(x, array, color):
     vlist.position = lines.flatten()
     vlist.color = np.tile(np.array(color), len(lines))
     return lines, vlist
+
 
 # Build vertex array for psi
 psi_lines, psi_vlist = createCurve(x, np.conjugate(psi)*psi, (255, 0, 0))
