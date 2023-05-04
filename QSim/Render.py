@@ -6,20 +6,22 @@ import numpy as np
 from scipy.spatial import Delaunay
 from .Simulator import Simulation
 from .Colormaps import viridis
-from typing import Callable
-
-# Import pyglet stuff
-import pyglet
-import pyglet.gl as gl
-from pyglet.graphics.shader import Shader, ShaderProgram
-from pyglet.math import Mat4, Vec3, Vec2
+from typing import Callable, Union, Tuple, List
 from zlib import decompress
 from base64 import b64decode
 from io import BytesIO
-from typing import Union
 from dataclasses import dataclass
+from time import time
+from enum import Enum
 
-__all__ = ["GLRender1D", "GLRender2D"]
+# Import pyglet stuff
+import pyglet
+from pyglet.window import key
+import pyglet.gl as gl
+from pyglet.graphics.shader import Shader, ShaderProgram
+from pyglet.math import Mat4, Vec3, Vec2
+
+__all__ = ["GLRender1D", "GLRender2D", "RenderMode"]
 
 # Apply windows-specific fix
 from sys import platform
@@ -27,6 +29,12 @@ if platform == 'win32':
     import ctypes
     appid = 'qsim.renderer.thing'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
+
+
+class RenderMode(Enum):
+    SQUARE_MODULUS = "Square Modulus"
+    REAL_PART = "Real Part"
+    IMAGINARY_PART = "Imaginary Part"
 
 
 @dataclass
@@ -54,6 +62,8 @@ class GLRenderer(pyglet.window.Window):
 
         # Configure GL stuff
         gl.glClearColor(0, 0, 0, 1)
+        self.batch = pyglet.graphics.Batch()
+        self.curves = []
 
         # Compile shader programs
         vert_shader = Shader(self.getVertexShaderSource(), 'vertex')
@@ -69,12 +79,70 @@ class GLRenderer(pyglet.window.Window):
         # Simulation reference
         self.simulation: Union[None, Simulation] = None
 
+        # Create info labels
+        self.energy_label = pyglet.text.Label("Energy: no", font_size=16, x=6, y=self.height, anchor_y='top')
+        self.fps_label = pyglet.text.Label("FPS: no", font_size=16, x=10, y=self.height - 36, anchor_y='top')
+
+        # Other parameters
+        self.show_fps = False
+        self.last_time: float = time()
+        self.show_energy = False
+        self.paused = False
+        self.render_mode: RenderMode = RenderMode.SQUARE_MODULUS
+
+        self.initial_height = self.height
+        self.initial_width = self.width
+
+    def applyVertexArray(self, simulation: Simulation):
+        """Pushes the simulation's current wavefunction into a vertex array.  Override in subclass"""
+        raise NotImplementedError()
+
     def on_draw(self):
         # Apply simulation step
-        self.simulation.step()
+        if not self.paused:
+            self.simulation.step()
+            self.applyVertexArray(self.simulation)
 
         # Clear screen
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+        # Draw everything in the batch
+        self.batch.draw()
+
+        # Draw label text
+        if self.show_fps:
+            self.fps_label.text = f'FPS: {1.0/(time() - self.last_time):.0f}'
+            self.fps_label.draw()
+        if self.show_energy:
+            self.energy_label.text = f'〈E〉: {self.simulation.energy():.2f}'
+            self.energy_label.draw()
+
+        # Update current time
+        self.last_time = time()
+
+    def on_key_press(self, symbol, modifiers):
+        # F: Toggle FPS indicator
+        if symbol == key.F:
+            self.show_fps = not self.show_fps
+
+        # E: Toggle energy indicator
+        elif symbol == key.E:
+            self.show_energy = not self.show_energy
+
+        # Space: Toggle pause:
+        elif symbol == key.SPACE:
+            self.paused = not self.paused
+
+    def setRenderMode(self, mode: RenderMode):
+        """
+        Configure what part of the wavefunction to render.
+        :param mode: Render mode.  Available options are: 'Square Modulus', 'Real Part', and 'Imaginary Part'
+        """
+        # Enforce type
+        mode = RenderMode(mode)
+
+        # Set mode
+        self.render_mode = mode
 
     def setExtent(self, xlo: float = None, xhi: float = None, ylo: float = None, yhi: float = None):
         """
@@ -170,11 +238,6 @@ class GLRender1D(GLRenderer):
         # Configuration options
         self.color = (255, 0, 0)
 
-    def on_draw(self):
-        super().on_draw()
-        self.setPsiVertexArray(self.simulation)
-        self.vlist.draw(gl.GL_LINES)
-
     def setStateColor(self, color: tuple):
         self.color = tuple(color)[:3]
 
@@ -192,20 +255,76 @@ class GLRender1D(GLRenderer):
         super().attachSimulation(simulation)
 
         # Build vertex list for the state vector
-        self.setPsiVertexArray(simulation)
+        self.applyVertexArray(simulation)
 
-    def setPsiVertexArray(self, simulation: Simulation):
-        x = simulation.meshgrid[0]
-        psi = simulation.squareMod
+    @staticmethod
+    def _arraysToLines(x: np.ndarray, y: np.ndarray):
+        """Helper function that converts two arrays of x/y values into an array of line segments"""
         lines = np.zeros((len(x) * 2 - 2, 2), dtype=float)
-        pts = np.array([x, psi]).T
+        pts = np.array([x, y]).T
         lines[::2] = pts[:-1]
         lines[1::2] = pts[1:]
+        return lines
+
+    def applyRenderMode(self, psi: np.ndarray) -> np.ndarray:
+        """Processes the provided array based on the current rendering mode"""
+        if self.render_mode == RenderMode.SQUARE_MODULUS:
+            return np.real(np.conjugate(psi)*psi)
+
+        elif self.render_mode == RenderMode.REAL_PART:
+            return np.real(psi)
+
+        elif self.render_mode == RenderMode.IMAGINARY_PART:
+            return np.imag(psi)
+
+    def applyVertexArray(self, simulation: Simulation):
+        x = simulation.meshgrid[0]
+        psi = self.applyRenderMode(simulation.psi)
+        lines = self._arraysToLines(x, psi)
         if len(lines) != self._vlist_length_old:
             self._vlist_length_old = len(lines)
-            self.vlist = self.program.vertex_list(len(lines), gl.GL_LINES)
+            self.vlist = self.program.vertex_list(len(lines), gl.GL_LINES, batch=self.batch)
         self.vlist.position = lines.flatten()
         self.vlist.color = np.tile(np.array(self.color), len(lines))
+
+    def addCurve(self, func: Callable, color: Union[Tuple[int, int, int], list, np.ndarray]):
+        """
+        Adds a curve to the plot
+
+        :param func: Function used to generate line
+        :param color: A three-tuple of integers ranging
+        """
+        # Raise exception if there's no coordinate system to evaluate line against
+        if self.simulation is None:
+            raise ValueError("Unable to add line before simulation has been declared!")
+
+        # Enforce color formatting
+        color = np.array(color, dtype=int)
+        if np.ndim(color) > 1:
+            raise ValueError(f"Expected 'color' to be a 1D array, was {np.ndim(color)}-D")
+        if len(color) < 3:
+            raise ValueError(f"Expected 'color' to be a 1D array of length 3, was {len(color)}")
+        color = color[:3]
+
+        # Evaluate function
+        x = self.simulation.meshgrid[0]
+        y = func(x)
+
+        # Generate lines and add to window
+        lines = self._arraysToLines(x, y)
+        vlist = self.program.vertex_list(len(lines), gl.GL_LINES, batch=self.batch)
+
+        vlist.position = lines.flatten()
+        vlist.color = np.tile(color, len(lines))
+
+        # Add to list to prevent garbage collection
+        self.curves.append(vlist)
+
+    def clearCurves(self):
+        """Removes any additional curves from the plot"""
+        for vlist in self.curves:
+            vlist.delete()
+        self.curves = []
 
 
 class GLRender2D(GLRenderer):
@@ -223,12 +342,6 @@ class GLRender2D(GLRenderer):
 
         # Configuration options
         self.colormap: Callable = viridis
-
-    def on_draw(self):
-        super().on_draw()
-
-        self.setPsiVertexArray(self.simulation)
-        self.vlist.draw(gl.GL_TRIANGLES)
 
     def attachSimulation(self, simulation: Simulation):
         """
@@ -264,13 +377,13 @@ class GLRender2D(GLRenderer):
         self._mesh = pts[tri.simplices]
 
         # Create vertex array object and assign mesh
-        self.vlist = self.program.vertex_list(len(self._mesh)*3, gl.GL_TRIANGLES)
+        self.vlist = self.program.vertex_list(len(self._mesh)*3, gl.GL_TRIANGLES, batch=self.batch)
         self.vlist.position = self._mesh.flatten()
 
         # Assign initial colors
-        self.setPsiVertexArray(simulation)
+        self.applyVertexArray(simulation)
 
-    def setPsiVertexArray(self, simulation: Simulation):
+    def applyVertexArray(self, simulation: Simulation):
         """
         Pushes data from the provided simulation object to the viewport
         :param simulation: Simulation object to pull data from

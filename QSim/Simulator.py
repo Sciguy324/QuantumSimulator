@@ -17,10 +17,12 @@ class Simulation:
     Primary simulation class for the quantum simulator
     """
 
-    def __init__(self, *axes, hamiltonian: Callable = None, dt: float = 0.1, hbar: float = 1.0, order=50):
+    def __init__(self, *axes, hamiltonian: Callable = None, boundary_conditions: Callable = None, dt: float = 0.1,
+                 hbar: float = 1.0, order=50):
         """
         :param axes: A set of 1D numpy arrays defining the axes of the system.  Expected to be evenly spaced
         :param hamiltonian: Function used to compute the wavefunction's energy (defaults to 0)
+        :param boundary_conditions: Function used to apply the boundary conditions to the wavefunction
         :param dt: Timestep per tick (defaults to 0.1)
         :param hbar: Planck's constant (defaults to 1)
         :param order: Correction order to compute each step with (defaults to order 50)
@@ -43,6 +45,7 @@ class Simulation:
             self.hamiltonian = lambda x, *meshgrid, delta: x*0
         else:
             self.hamiltonian: Callable = hamiltonian
+        self.boundary_conditions = boundary_conditions
         self.order = order
 
     @property
@@ -128,14 +131,9 @@ class Simulation:
         a = np.sqrt(nquad(self.squareMod, self.deltas))
         return self._psi / a
 
-    def step(self):
-        """Runs a single iteration of the simulator"""
-        # Increment timer
-        self._time += self.dt
-        self._step_count += 1
-
-        # Output buffer
-        result = self.psi
+    def _computeDeltaPsi(self, psi: np.ndarray):
+        """Internal helper function that computes how much psi should change by in this step"""
+        result = np.zeros(psi.shape, dtype='complex128')
 
         # Apply N orders of approximation
         for n in range(1, self.order + 1):
@@ -143,16 +141,70 @@ class Simulation:
             c = 1 / factorial(n) * (-1j * self.dt / self.hbar) ** n
 
             # Apply hamiltonian N times
-            buffer = self.psi.copy()
+            buffer = psi.copy()
             for i in range(n):
                 buffer = self.hamiltonian(buffer, *self.meshgrid, *self.deltas)
 
             # Add to final result
             result = result + c * buffer
 
-        # Pass result back into internal wavefunction
-        self._psi = result
+        return result
+
+    def step(self):
+        """Runs a single iteration of the simulator"""
+        # Increment timer
+        self._time += self.dt
+        self._step_count += 1
+
+        # Apply iteration and store result
+        self._psi = self.psi + self._computeDeltaPsi(self._psi)
+
+        # Apply boundary conditions
+        if self.boundary_conditions is not None:
+            self._psi = self.boundary_conditions(self.psi, *self.meshgrid, *self.deltas)
 
         # Normalize if applicable
         if self._auto_normalize:
             self.normalize()
+
+    def energy(self) -> float:
+        """Computes the expectation value of the energy"""
+        # Take hamiltonian of wavefunction
+        H_psi = self.hamiltonian(self._psi, *self.meshgrid, *self.deltas)
+
+        # Integrate the complex conjugate time that over all space
+        energy = nquad(np.real(np.conjugate(self._psi)*H_psi), self.deltas)
+
+        # Return result
+        return energy
+
+
+# class EigenSearch(Simulation):
+#     """
+#     Simulator used specifically to narrow in on the eigenfunction of the system
+#     """
+#
+#     def step(self):
+#         # Increment timer
+#         self._time += self.dt
+#         self._step_count += 1
+#
+#         dpsi = np.full(self._psi.shape, 0.1)
+#
+#         # Figure out how much psi would change by.  We'll call this 'delta'
+#         delta = self._computeDeltaPsi(self._psi)
+#
+#         # Compute first derivative of this "delta" with respect to psi
+#         delta_derivative = (self._computeDeltaPsi(self._psi+dpsi) - delta) / dpsi
+#
+#         # Compute how much to modify guess for psi.  Replace NaNs with 0
+#         modifier_guess = delta / delta_derivative
+#         np.nan_to_num(modifier_guess, copy=False, nan=0.0, neginf=0.0, posinf=0.0)
+#
+#         # Modify our guess for psi
+#         self._psi = self._psi + modifier_guess
+#
+#         # Normalize psi
+#         self.normalize()
+
+

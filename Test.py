@@ -9,14 +9,13 @@ hbar = 1
 L = 1
 m = 1
 
-TEST = '2D-Potential'
+TEST = '1D'
 
 if TEST == '1D':
     # Declare hamiltonian (square well)
-    def H(psi: np.ndarray, x: np.ndarray):
+    def H(psi: np.ndarray, x: np.ndarray, dx: float):
         dx = x[1] - x[0]
         return -hbar**2 / (2*m) * laplacian(psi, (dx,))
-
 
     # Create simulator
     simulation = Simulation(np.linspace(0, L, 50, dtype=float),
@@ -52,7 +51,7 @@ if TEST == '2D':
 
 
 if TEST == '2D-Potential':
-    a = 500
+    a = 0.05
     k = 10
 
     # Declare hamiltonian (square well)
@@ -67,8 +66,8 @@ if TEST == '2D-Potential':
         #Theta = np.sin(theta)
         return R#*Theta
 
-    def basisState(x, y, nx=1, ny=1):
-        return np.cos(np.pi * nx * x / L) * np.cos(np.pi * ny * y / L)
+    # def basisState(x, y, nx=1, ny=1):
+        # return np.cos(np.pi * nx * x / L) * np.cos(np.pi * ny * y / L)
 
     # Create simulator
     simulation = Simulation(np.linspace(-L/2, L/2, 20, dtype=float),
@@ -81,4 +80,24 @@ if TEST == '2D-Potential':
     win = GLRender2D(width=500, height=500)
     win.attachSimulation(simulation)
     win.start()
+
+
+# if TEST == '1D-Eigenfunction':
+#     # Declare hamiltonian (square well)
+#     def H(psi: np.ndarray, x: np.ndarray, dx: float):
+#         return -hbar**2 / (2*m) * laplacian(psi, (dx,)) + x**2
+#
+#     # Create simulator
+#     simulation = EigenSearch(np.linspace(0, L, 50, dtype=float),
+#                              hamiltonian=H, dt=5e-3, order=70)
+#     #simulation.setStateFromFunction(lambda x: (x-L/2)**2)
+#     #simulation._psi[0] = 0.0+0.0j
+#     #simulation._psi[-1] = 0.0 + 0.0j
+#     print(simulation.energy())
+#     simulation.step()
+#
+#     # Create renderer
+#     win = GLRender1D()
+#     win.attachSimulation(simulation)
+#     win.start()
 
