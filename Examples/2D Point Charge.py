@@ -4,7 +4,6 @@ from QSim.Render import GLRender2D
 from QSim.Math import laplacian
 import numpy as np
 
-
 # Declare constants
 hbar = 1
 L = 1

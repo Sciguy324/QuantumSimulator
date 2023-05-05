@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial import Delaunay
 from .Simulator import Simulation
 from .Colormaps import viridis
-from typing import Callable, Union, Tuple, List
+from typing import Callable, Union, Tuple
 from zlib import decompress
 from base64 import b64decode
 from io import BytesIO
@@ -19,7 +19,7 @@ import pyglet
 from pyglet.window import key
 import pyglet.gl as gl
 from pyglet.graphics.shader import Shader, ShaderProgram
-from pyglet.math import Mat4, Vec3, Vec2
+from pyglet.math import Mat4, Vec2
 
 __all__ = ["GLRender1D", "GLRender2D", "RenderMode"]
 
