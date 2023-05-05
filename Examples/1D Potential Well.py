@@ -30,6 +30,6 @@ simulation.setStateFromFunction(lambda x: np.sqrt(2/L)*np.sin(np.pi*x/L) + np.sq
 simulation.step()
 
 # Create renderer
-win = GLRender1D()
+win = GLRender1D(width=960, height=540)
 win.attachSimulation(simulation)
 win.start()

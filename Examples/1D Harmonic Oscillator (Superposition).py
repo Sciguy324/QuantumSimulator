@@ -9,7 +9,7 @@ import numpy as np
 hbar = 1
 L = 1
 m = 1
-k = 5
+k = 4
 
 omega = np.sqrt(k/m)
 alpha = m*omega/hbar

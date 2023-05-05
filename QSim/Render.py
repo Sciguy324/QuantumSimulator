@@ -101,7 +101,8 @@ class GLRenderer(pyglet.window.Window):
         # Apply simulation step
         if not self.paused:
             self.simulation.step()
-            self.applyVertexArray(self.simulation)
+
+        self.applyVertexArray(self.simulation)
 
         # Clear screen
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -132,6 +133,10 @@ class GLRenderer(pyglet.window.Window):
         # Space: Toggle pause:
         elif symbol == key.SPACE:
             self.paused = not self.paused
+
+        # Left arrow: advance forward ONE step
+        elif symbol == key.RIGHT:
+            self.simulation.step()
 
     def setRenderMode(self, mode: RenderMode):
         """
@@ -292,7 +297,7 @@ class GLRender1D(GLRenderer):
         Adds a curve to the plot
 
         :param func: Function used to generate line
-        :param color: A three-tuple of integers ranging
+        :param color: A three-tuple of integers ranging 0-255
         """
         # Raise exception if there's no coordinate system to evaluate line against
         if self.simulation is None:
@@ -335,6 +340,7 @@ class GLRender2D(GLRenderer):
         super().__init__(*args, **kwargs)
         # Vertex arrays
         self.vlist = None
+        self.boxes = []
 
         # Place to store triangle mesh
         self._mesh: np.ndarray = np.array([], dtype=float)
@@ -404,3 +410,47 @@ class GLRender2D(GLRenderer):
         psi2 = simulation.squareMod
         colors = viridis(psi2, self.vmin, self.vmax).reshape(-1, 3)
         self.vlist.color = colors[self._simplices].flatten()
+
+    def addBox(self, x1: float, y1: float, x2: float, y2: float, color: Tuple[int, int, int]):
+        """
+        Adds a box to the plot
+
+        :param x1: x₁ coordinate of box
+        :param y1: y₁ coordinate of box
+        :param x2: x₂ coordinate of box
+        :param y2: y₂ coordinate of box
+        :param color: A three-tuple of integers ranging 0-255
+        """
+        # Raise exception if there's no coordinate system to evaluate line against
+        if self.simulation is None:
+            raise ValueError("Unable to add line before simulation has been declared!")
+
+        # Enforce color formatting
+        color = np.array(color, dtype=int)
+        if np.ndim(color) > 1:
+            raise ValueError(f"Expected 'color' to be a 1D array, was {np.ndim(color)}-D")
+        if len(color) < 3:
+            raise ValueError(f"Expected 'color' to be a 1D array of length 3, was {len(color)}")
+        color = color[:3]
+
+        # Convert box to triangle mesh
+        pts = np.array([[x1, y1],
+                        [x1, y2],
+                        [x2, y2],
+                        [x2, y1]], dtype=float)
+        tri = Delaunay(pts)
+        mesh = pts[tri.simplices]
+
+        # Generate vertex array
+        vlist = self.program.vertex_list(len(mesh)*3, gl.GL_TRIANGLES, batch=self.batch)
+        vlist.position = mesh.flatten()
+        vlist.color = np.tile(color, mesh.size//2)
+
+        # Add to list to prevent garbage collection
+        self.boxes.append(vlist)
+
+    def clearBoxes(self):
+        """Clears all boxed from the canvas"""
+        for vlist in self.boxes:
+            vlist.delete()
+        self.boxes = []
