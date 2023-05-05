@@ -25,9 +25,9 @@ __all__ = ["GLRender1D", "GLRender2D", "RenderMode"]
 
 # Apply windows-specific fix
 from sys import platform
-if platform == 'win32':
+if platform.startswith('win'):
     import ctypes
-    appid = 'qsim.renderer.thing'  # arbitrary string
+    appid = u'qsim.renderer.thing'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
 
 
