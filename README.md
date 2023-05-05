@@ -6,7 +6,7 @@ This package contains tools for running a finite-difference method simulation of
 
 # Requirements
 
-This was written with the following package versions.  Others may also work, but have not been tested.
+This was written with the following python version and packages.  Others may also work, but have not been tested.
 
 | Name   | Version |
 | ------ | ------- |
