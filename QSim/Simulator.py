@@ -178,33 +178,3 @@ class Simulation:
         # Return result
         return energy
 
-
-# class EigenSearch(Simulation):
-#     """
-#     Simulator used specifically to narrow in on the eigenfunction of the system
-#     """
-#
-#     def step(self):
-#         # Increment timer
-#         self._time += self.dt
-#         self._step_count += 1
-#
-#         dpsi = np.full(self._psi.shape, 0.1)
-#
-#         # Figure out how much psi would change by.  We'll call this 'delta'
-#         delta = self._computeDeltaPsi(self._psi)
-#
-#         # Compute first derivative of this "delta" with respect to psi
-#         delta_derivative = (self._computeDeltaPsi(self._psi+dpsi) - delta) / dpsi
-#
-#         # Compute how much to modify guess for psi.  Replace NaNs with 0
-#         modifier_guess = delta / delta_derivative
-#         np.nan_to_num(modifier_guess, copy=False, nan=0.0, neginf=0.0, posinf=0.0)
-#
-#         # Modify our guess for psi
-#         self._psi = self._psi + modifier_guess
-#
-#         # Normalize psi
-#         self.normalize()
-
-

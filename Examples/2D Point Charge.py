@@ -17,12 +17,10 @@ def H(psi: np.ndarray, x: np.ndarray, y: np.ndarray, dx: float, dy: float):
     return -hbar**2 / (2*m) * laplacian(psi, (dx, dy)) - 5/(r+0.001)*psi
 
 
-def basisState(x, y):
+def initialState(x, y):
     r = np.sqrt(x ** 2 + y ** 2)
     theta = np.arctan2(x, y)
-    #R = (2-r / a) * np.exp(-0.5*r / a)
-    R = np.exp(-0.5*r / a)*np.cos(theta)
-    return R
+    return np.exp(-0.5*r / a)*np.cos(theta)
 
 
 # Create simulator
@@ -30,7 +28,7 @@ simulation = Simulation(np.linspace(-3*L, 3*L, 4*20, dtype=float),
                         np.linspace(-3*L, 3*L, 4*20, dtype=float),
                         hamiltonian=H,
                         dt=5e-3, order=30)
-simulation.setStateFromFunction(lambda x, y: basisState(x, y))
+simulation.setStateFromFunction(initialState)
 
 # Create renderer
 win = GLRender2D(width=500, height=500)

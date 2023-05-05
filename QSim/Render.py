@@ -30,6 +30,15 @@ if platform.startswith('win'):
     appid = u'qsim.renderer.thing'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
 
+def getCurrentId():
+    from ctypes import wintypes
+    import ctypes
+    lpBuffer = wintypes.LPWSTR()
+    AppUserModelID = ctypes.windll.shell32.GetCurrentProcessExplicitAppUserModelID
+    AppUserModelID(ctypes.cast(ctypes.byref(lpBuffer), wintypes.LPWSTR))
+    appid = lpBuffer.value
+    ctypes.windll.kernel32.LocalFree(lpBuffer)
+    print(appid)
 
 class RenderMode(Enum):
     SQUARE_MODULUS = "Square Modulus"
@@ -128,6 +137,9 @@ class GLRenderer(pyglet.window.Window):
         # E: Toggle energy indicator
         elif symbol == key.E:
             self.show_energy = not self.show_energy
+
+        elif symbol == key.A:
+            getCurrentId()
 
         # Space: Toggle pause:
         elif symbol == key.SPACE:
