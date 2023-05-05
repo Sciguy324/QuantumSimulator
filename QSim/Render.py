@@ -342,6 +342,8 @@ class GLRender2D(GLRenderer):
 
         # Configuration options
         self.colormap: Callable = viridis
+        self.vmin: float = 0.0
+        self.vmax: float = 2.0
 
     def attachSimulation(self, simulation: Simulation):
         """
@@ -383,11 +385,22 @@ class GLRender2D(GLRenderer):
         # Assign initial colors
         self.applyVertexArray(simulation)
 
+    def setColorRange(self, vmin: float = None, vmax: float = None):
+        """
+        Sets the colormap range.
+        :param vmin: Lower bound of the colormap
+        :param vmax: Upper bound of the colormap
+        """
+        if vmin is not None:
+            self.vmin = float(vmin)
+        if vmax is not None:
+            self.vmax = float(vmax)
+
     def applyVertexArray(self, simulation: Simulation):
         """
         Pushes data from the provided simulation object to the viewport
         :param simulation: Simulation object to pull data from
         """
         psi2 = simulation.squareMod
-        colors = viridis(psi2, 0.0, np.max(psi2)).reshape(-1, 3)
+        colors = viridis(psi2, self.vmin, self.vmax).reshape(-1, 3)
         self.vlist.color = colors[self._simplices].flatten()
