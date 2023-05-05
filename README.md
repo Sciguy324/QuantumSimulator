@@ -4,7 +4,7 @@
 
 This package contains tools for running a finite-difference method simulation of the Schrödinger equation.  Written for Advanced Quantum Mechanics in Spring 2023.
 
-Examples for using the simulator can be found in the `Simulator` folder.
+Examples for using the simulator can be found in the `Examples` folder.
 
 # Requirements
 
